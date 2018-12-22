@@ -1,5 +1,7 @@
 # writedown README
 
+[![Build Status](https://dev.azure.com/john-lam-public/writedown/_apis/build/status/jflam.writedown?branchName=master)](https://dev.azure.com/john-lam-public/writedown/_build/latest?definitionId=1?branchName=master)
+
 This is the README for your extension "writedown". After writing up a brief description, we recommend including the following sections.
 
 ## Features
