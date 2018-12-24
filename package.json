@@ -10,26 +10,23 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:extension.helloWorld"
+        "*"
     ],
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
-            {
-                "command": "extension.helloWorld",
-                "title": "Hello World"
-            },
-            {
+           {
                 "command": "writedown.paste",
-                "title": "WriteDown Paste"
+                "title": "Paste",
+                "category": "WriteDown"
             }
         ],
         "keybindings": [
             {
-                "key": "ctrl+v",
+                "key": "ctrl+alt+v",
                 "mac": "cmd+v",
                 "command": "writedown.paste",
-                "when": "editorTextFocus"
+                "when": "editorTextFocus && !editorReadonly"
             }
         ]
     },
