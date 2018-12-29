@@ -15,7 +15,7 @@
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
-           {
+            {
                 "command": "writedown.paste",
                 "title": "Paste",
                 "category": "WriteDown"
@@ -43,5 +43,8 @@
         "tslint": "^5.8.0",
         "@types/node": "^8.10.25",
         "@types/mocha": "^2.2.42"
+    },
+    "dependencies": {
+        "child_process": ""
     }
 }
