@@ -69,41 +69,41 @@ export function activate(context: vscode.ExtensionContext) {
         };
 
         vscode.window.showInputBox(options).then(accepted_filename => {
+            if (accepted_filename !== undefined) {
+                let cmd = `clippy --filename=${accepted_filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
+                exec(cmd, (err: string, stdout: string, stderr: string) => {
+                    if (err) {
+                        vscode.window.showErrorMessage(`clippy failed with this error: ${err}`);
+                        return;
+                    } else {
+                        // Clippy successfully wrote the file out to disk, now generate the markdown
+                        const start = editor.selection.start;
 
-            // TODO: handle the case where the user hit ESC instead of ENTER
-            let cmd = `clippy --filename=${accepted_filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
-            exec(cmd, (err: string, stdout: string, stderr: string) => {
-                if (err) {
-                    console.log(`uh oh: ${err}.`);
-                    return;
-                } else {
-                    // Clippy successfully wrote the file out to disk, now generate the markdown
-                    const start = editor.selection.start;
+                        // Run the base clipboard paste command. I believe that this command simply delegates to the
+                        // Electron paste command. When the paste command returns, the VS code selection in the editor
+                        // has been extended to encompass all of the text that was pasted into the editor.
+                        vscode.commands.executeCommand("editor.action.clipboardPasteAction")
+                            .then(() => {
 
-                    // Run the base clipboard paste command. I believe that this command simply delegates to the
-                    // Electron paste command. When the paste command returns, the VS code selection in the editor
-                    // has been extended to encompass all of the text that was pasted into the editor.
-                    vscode.commands.executeCommand("editor.action.clipboardPasteAction")
-                        .then(() => {
+                                // Read the text from the document *after* it has been pasted. We don't have the ability
+                                // to read the text beforehand, so we must first paste, then read the pasted text before
+                                // we can reformat it into something else.
+                                const end = editor.selection.end;
+                                let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
 
-                            // Read the text from the document *after* it has been pasted. We don't have the ability
-                            // to read the text beforehand, so we must first paste, then read the pasted text before
-                            // we can reformat it into something else.
-                            const end = editor.selection.end;
-                            let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
-
-                            editor.edit(edit => {
-                                edit.replace(selection, `![](./${accepted_filename}.${image_encoder})`);
-                            },
-                                {
-                                    undoStopAfter: false,
-                                    undoStopBefore: false
-                                });
-                        });
-                }
-            });
+                                editor.edit(edit => {
+                                    let local_filename = path.basename(accepted_filename)
+                                    edit.replace(selection, `![](./${local_filename}.${image_encoder})`);
+                                },
+                                    {
+                                        undoStopAfter: false,
+                                        undoStopBefore: false
+                                    });
+                            });
+                    }
+                });
+            }
         });
-
     }));
 
     context.subscriptions.concat(disposables);
