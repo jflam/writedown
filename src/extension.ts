@@ -1,8 +1,24 @@
 import * as vscode from 'vscode';
-const { exec } = require('child_process');
-var path = require('path');
-
+import * as fs from 'fs';
+import * as path from 'path';
 import Window = vscode.window;
+
+// TODO: typescript this?
+const { exec } = require('child_process');
+
+function generateUniqueFilename(directoryName: string, filename: string, extension: string): string {
+    let counter = 0;
+    let path1: string, path2: string;
+    while(true) {
+        path1 = `${directoryName}/${filename}-${counter}.${extension}`;
+        path2 = `${directoryName}/${filename}-${counter}_full.${extension}`;
+        if (!fs.existsSync(path1) && !fs.existsSync(path2)) {
+            break;
+        }
+        counter++;
+    }
+    return `${filename}-${counter}`;
+}
 
 // We use the activate() function to register the commands for the writedown extension
 export function activate(context: vscode.ExtensionContext) {
@@ -13,7 +29,15 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Each command that we register must be registered with our disposables collection to 
     // ensure that we have the correct cleanup semantics when we are done.
-    disposables.push(vscode.commands.registerCommand('writedown.paste', () => {
+    disposables.push(vscode.commands.registerCommand('writedown.pasteImage', () => {
+
+        // Currently only supports Windows until we write a cross-platform clippy
+        if (process.platform !== "win32")
+        {
+            // TODO: is there another way to disable even registering the command?
+            vscode.window.showErrorMessage("The Paste Image command only works on Windows");
+            return;
+        }
 
         // Before the paste command can run, we must have both an active editor and an active 
         // document (and should we test to see if the document is editable?)
@@ -23,23 +47,31 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        var currentlyOpenTabfilePath = document.fileName;
-        var currentDirectory = path.dirname(currentlyOpenTabfilePath);
-        console.log(`the path is: ${currentDirectory}`);
+        // TODO: pull these parameters from configuration
+        let image_filename = 'image';
+        let image_max_width = 800;
+        let image_encoder = 'png';
+        let image_write_full = true;
 
-        // TODO: generate filename based on current directory and look for non-conflicting names
+        // Now extract the working directory for the markdown document from its filename
+        let currentlyOpenTabfilePath = document.fileName;
+        let currentDirectory = path.dirname(currentlyOpenTabfilePath);
+
+        // Generate a unique filename for the image
+        let filename = generateUniqueFilename(currentDirectory, image_filename, image_encoder);
+
+        // TODO: pop a dialog in VS Code to allow the user to edit the filename
+
         // TODO: pass the name to the command string that we generate that will include the fully
         // qualified path to the thing
 
-        const cmd = 'clippy --filename=c:/users/jlam/src/test/boo --max_width=800 --encoder=png --write_full=false';
+        let cmd = `clippy --filename=${currentDirectory}\\${filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
         exec(cmd, (err: string, stdout: string, stderr: string) => {
             if (err) {
                 console.log(`uh oh: ${err}.`);
                 return;
             } else {
-                console.log(`stdout: ${stdout}`);
-                console.log(`stderr: ${stderr}`);
-
+                // Clippy successfully wrote the file out to disk, now generate the markdown
                 const start = editor.selection.start;
 
                 // Run the base clipboard paste command. I believe that this command simply delegates to the
@@ -53,21 +85,9 @@ export function activate(context: vscode.ExtensionContext) {
                         // we can reformat it into something else.
                         const end = editor.selection.end;
                         let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
-                        let selectedText = document.getText(selection);
 
-                        // TODO: write a new class that handles examining the inserted text from the clipboard 
-                        // and replacing it with the right thing. 
-
-                        // TODO: if we want to examine the clipboard before the paste operation, e.g., detect 
-                        // the presence of a bitmap image on the clipboard, we will need to use some cross platform
-                        // node.js extensions to read from the clipboard.
-
-                        // TODO: understand how to incorporate 3rd party node.js extensions into our VS Code 
-                        // extension
-
-                        // Do something silly: replace the selection with "holy moly"
                         editor.edit(edit => {
-                            edit.replace(selection, '![holy moly](c:/users/jlam/src/test/boo.png)');
+                            edit.replace(selection, `![](./${filename}.${image_encoder})`);
                         },
                             {
                                 undoStopAfter: false,

@@ -16,8 +16,8 @@
     "contributes": {
         "commands": [
             {
-                "command": "writedown.paste",
-                "title": "Paste",
+                "command": "writedown.pasteImage",
+                "title": "Paste Image",
                 "category": "WriteDown"
             }
         ],
@@ -25,7 +25,7 @@
             {
                 "key": "ctrl+alt+v",
                 "mac": "cmd+v",
-                "command": "writedown.paste",
+                "command": "writedown.pasteImage",
                 "when": "editorTextFocus && !editorReadonly"
             }
         ]
