@@ -60,42 +60,50 @@ export function activate(context: vscode.ExtensionContext) {
         // Generate a unique filename for the image
         let filename = generateUniqueFilename(currentDirectory, image_filename, image_encoder);
 
-        // TODO: pop a dialog in VS Code to allow the user to edit the filename
+        // Pop an input box in VS Code to allow the user to edit the filename
+        let options: vscode.InputBoxOptions = {
+            prompt: "Filename to save the image as (without extension)",
+            value: `${currentDirectory}\\${filename}`,
+            placeHolder: "",
+            valueSelection: [currentDirectory.length + 1, currentDirectory.length + filename.length + 1]
+        };
 
-        // TODO: pass the name to the command string that we generate that will include the fully
-        // qualified path to the thing
+        vscode.window.showInputBox(options).then(accepted_filename => {
 
-        let cmd = `clippy --filename=${currentDirectory}\\${filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
-        exec(cmd, (err: string, stdout: string, stderr: string) => {
-            if (err) {
-                console.log(`uh oh: ${err}.`);
-                return;
-            } else {
-                // Clippy successfully wrote the file out to disk, now generate the markdown
-                const start = editor.selection.start;
+            // TODO: handle the case where the user hit ESC instead of ENTER
+            let cmd = `clippy --filename=${accepted_filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
+            exec(cmd, (err: string, stdout: string, stderr: string) => {
+                if (err) {
+                    console.log(`uh oh: ${err}.`);
+                    return;
+                } else {
+                    // Clippy successfully wrote the file out to disk, now generate the markdown
+                    const start = editor.selection.start;
 
-                // Run the base clipboard paste command. I believe that this command simply delegates to the
-                // Electron paste command. When the paste command returns, the VS code selection in the editor
-                // has been extended to encompass all of the text that was pasted into the editor.
-                vscode.commands.executeCommand("editor.action.clipboardPasteAction")
-                    .then(() => {
+                    // Run the base clipboard paste command. I believe that this command simply delegates to the
+                    // Electron paste command. When the paste command returns, the VS code selection in the editor
+                    // has been extended to encompass all of the text that was pasted into the editor.
+                    vscode.commands.executeCommand("editor.action.clipboardPasteAction")
+                        .then(() => {
 
-                        // Read the text from the document *after* it has been pasted. We don't have the ability
-                        // to read the text beforehand, so we must first paste, then read the pasted text before
-                        // we can reformat it into something else.
-                        const end = editor.selection.end;
-                        let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
+                            // Read the text from the document *after* it has been pasted. We don't have the ability
+                            // to read the text beforehand, so we must first paste, then read the pasted text before
+                            // we can reformat it into something else.
+                            const end = editor.selection.end;
+                            let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
 
-                        editor.edit(edit => {
-                            edit.replace(selection, `![](./${filename}.${image_encoder})`);
-                        },
-                            {
-                                undoStopAfter: false,
-                                undoStopBefore: false
-                            });
-                    });
-            }
+                            editor.edit(edit => {
+                                edit.replace(selection, `![](./${accepted_filename}.${image_encoder})`);
+                            },
+                                {
+                                    undoStopAfter: false,
+                                    undoStopBefore: false
+                                });
+                        });
+                }
+            });
         });
+
     }));
 
     context.subscriptions.concat(disposables);
