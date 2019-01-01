@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import Window = vscode.window;
+import * as ard from 'app-root-dir';
 
 // TODO: typescript this?
 const { exec } = require('child_process');
@@ -70,7 +71,13 @@ export function activate(context: vscode.ExtensionContext) {
 
         vscode.window.showInputBox(options).then(accepted_filename => {
             if (accepted_filename !== undefined) {
-                let cmd = `clippy --filename=${accepted_filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
+
+                // TODO: add the right build step to the extension to copy the platform specific binary resources/bin
+                
+                // Retrieve the path to the root of this extension (the root of the github repo)
+                // and append /resources/bin to that path
+                let path_to_clippy = path.join(ard.get(), "resources/bin/clippy");
+                let cmd = `${path_to_clippy} --filename=${accepted_filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
                 exec(cmd, (err: string, stdout: string, stderr: string) => {
                     if (err) {
                         vscode.window.showErrorMessage(`clippy failed with this error: ${err}`);
@@ -92,7 +99,7 @@ export function activate(context: vscode.ExtensionContext) {
                                 let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
 
                                 editor.edit(edit => {
-                                    let local_filename = path.basename(accepted_filename)
+                                    let local_filename = path.basename(accepted_filename);
                                     edit.replace(selection, `![](./${local_filename}.${image_encoder})`);
                                 },
                                     {
