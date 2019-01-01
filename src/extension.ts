@@ -21,6 +21,10 @@ function generateUniqueFilename(directoryName: string, filename: string, extensi
     return `${filename}-${counter}`;
 }
 
+export function add(x: number, y: number): number {
+    return x + y;
+}
+
 // We use the activate() function to register the commands for the writedown extension
 export function activate(context: vscode.ExtensionContext) {
 
