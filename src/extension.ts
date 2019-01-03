@@ -50,12 +50,13 @@ export function activate(context: vscode.ExtensionContext) {
         // TODO: pull these parameters from configuration
         let image_filename = 'image';
         let image_max_width = 800;
-        let image_encoder = 'png';
+        let image_encoder = 'jpg';
         let image_write_full = true;
+        let media_directory = 'img';
 
         // Now extract the working directory for the markdown document from its filename
         let currentlyOpenTabfilePath = document.fileName;
-        let currentDirectory = path.dirname(currentlyOpenTabfilePath);
+        let currentDirectory = path.join(path.dirname(currentlyOpenTabfilePath), "..\\..\\static\\", media_directory);
 
         // Generate a unique filename for the image
         let filename = generateUniqueFilename(currentDirectory, image_filename, image_encoder);
@@ -93,7 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
 
                                 editor.edit(edit => {
                                     let local_filename = path.basename(accepted_filename)
-                                    edit.replace(selection, `![](./${local_filename}.${image_encoder})`);
+                                    edit.replace(selection, `{{< figure src="/${media_directory}/${local_filename}.${image_encoder}" >}}`);
                                 },
                                     {
                                         undoStopAfter: false,
