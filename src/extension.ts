@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import Window = vscode.window;
+import * as ard from 'app-root-dir';
 
 // TODO: typescript this?
 const { exec } = require('child_process');
@@ -20,6 +21,10 @@ function generateUniqueFilename(directoryName: string, filename: string, extensi
     return `${filename}-${counter}`;
 }
 
+export function add(x: number, y: number): number {
+    return x + y;
+}
+
 // We use the activate() function to register the commands for the writedown extension
 export function activate(context: vscode.ExtensionContext) {
 
@@ -29,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Each command that we register must be registered with our disposables collection to 
     // ensure that we have the correct cleanup semantics when we are done.
-    disposables.push(vscode.commands.registerCommand('writedown.pasteImage', () => {
+    disposables.push(vscode.commands.registerCommand('writedown.paste', () => {
 
         // Currently only supports Windows until we write a cross-platform clippy
         if (process.platform !== "win32")
@@ -58,37 +63,47 @@ export function activate(context: vscode.ExtensionContext) {
         let currentlyOpenTabfilePath = document.fileName;
         let currentDirectory = path.join(path.dirname(currentlyOpenTabfilePath), "..\\..\\static\\", media_directory);
 
-        // Generate a unique filename for the image
-        let filename = generateUniqueFilename(currentDirectory, image_filename, image_encoder);
+        // Retrieve the path to the root of this extension (the root of the github repo)
+        // and append /resources/bin to that path to find the clippy binary
+        let path_to_clippy = path.join(ard.get(), "resources/bin/clippy");
 
-        // Pop an input box in VS Code to allow the user to edit the filename
-        let options: vscode.InputBoxOptions = {
-            prompt: "Filename to save the image as (without extension)",
-            value: `${currentDirectory}\\${filename}`,
-            placeHolder: "",
-            valueSelection: [currentDirectory.length + 1, currentDirectory.length + filename.length + 1]
-        };
+        // Test to see if there is a bitmap on the clipboard
+        let cmd = `${path_to_clippy} --test_clipboard_has_bitmap=true`;
+        exec(cmd, (err: string, stdout: string, stderr: string) => {
+            // We always fail the command if there is an error
+            if (err)
+            {
+                vscode.window.showErrorMessage(`clippy failed with this error: ${stdout}`);
+                return;
+            }
+            if (stdout === "TRUE")
+            {
+                // We are doing the bitmap thing
+                // Generate a unique filename for the image
+                let filename = generateUniqueFilename(currentDirectory, image_filename, image_encoder);
 
-        vscode.window.showInputBox(options).then(accepted_filename => {
-            if (accepted_filename !== undefined) {
-                let cmd = `clippy --filename=${accepted_filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
-                exec(cmd, (err: string, stdout: string, stderr: string) => {
-                    if (err) {
-                        vscode.window.showErrorMessage(`clippy failed with this error: ${err}`);
-                        return;
-                    } else {
-                        // Clippy successfully wrote the file out to disk, now generate the markdown
-                        const start = editor.selection.start;
+                // Pop an input box in VS Code to allow the user to edit the filename
+                let options: vscode.InputBoxOptions = {
+                    prompt: "Filename to save the image as (without extension)",
+                    value: `${currentDirectory}\\${filename}`,
+                    placeHolder: "",
+                    valueSelection: [currentDirectory.length + 1, currentDirectory.length + filename.length + 1]
+                };
 
-                        // Run the base clipboard paste command. I believe that this command simply delegates to the
-                        // Electron paste command. When the paste command returns, the VS code selection in the editor
-                        // has been extended to encompass all of the text that was pasted into the editor.
-                        vscode.commands.executeCommand("editor.action.clipboardPasteAction")
-                            .then(() => {
+                vscode.window.showInputBox(options).then(accepted_filename => {
+                    if (accepted_filename !== undefined) {
 
-                                // Read the text from the document *after* it has been pasted. We don't have the ability
-                                // to read the text beforehand, so we must first paste, then read the pasted text before
-                                // we can reformat it into something else.
+                        // TODO: add the right build step to the extension to copy the platform specific binary resources/bin
+
+                        let path_to_clippy = path.join(ard.get(), "resources/bin/clippy");
+                        let cmd = `${path_to_clippy} --filename=${accepted_filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
+                        exec(cmd, (err: string, stdout: string, stderr: string) => {
+                            if (err) {
+                                vscode.window.showErrorMessage(`clippy failed with this error: ${stdout}`);
+                                return;
+                            } else {
+                                // Clippy successfully wrote the file out to disk, now generate the markdown
+                                const start = editor.selection.start;
                                 const end = editor.selection.end;
                                 let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
 
@@ -100,9 +115,39 @@ export function activate(context: vscode.ExtensionContext) {
                                         undoStopAfter: false,
                                         undoStopBefore: false
                                     });
-                            });
+                            }
+                        });
                     }
                 });
+            }
+            else 
+            {
+                const start = editor.selection.start;
+
+                // We are doing the text on clipboard thing
+
+                // Run the base clipboard paste command. I believe that this command simply delegates to the
+                // Electron paste command. When the paste command returns, the VS code selection in the editor
+                // has been extended to encompass all of the text that was pasted into the editor.
+                vscode.commands.executeCommand("editor.action.clipboardPasteAction")
+                    .then(() => {
+
+                        // Read the text from the document *after* it has been pasted. We don't have the ability
+                        // to read the text beforehand, so we must first paste, then read the pasted text before
+                        // we can reformat it into something else.
+                        const end = editor.selection.end;
+                        let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
+
+                        editor.edit(edit => 
+                            {
+                                edit.replace(selection, `hello, world!`);
+                            },
+                            {
+                                undoStopAfter: false,
+                                undoStopBefore: false
+                            });
+                    });
+
             }
         });
     }));

@@ -6,6 +6,11 @@
     "engines": {
         "vscode": "^1.30.0"
     },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jflam/writedown"
+    },
+    "license": "MIT",
     "categories": [
         "Other"
     ],
@@ -16,8 +21,8 @@
     "contributes": {
         "commands": [
             {
-                "command": "writedown.pasteImage",
-                "title": "Paste Image",
+                "command": "writedown.paste",
+                "title": "Paste",
                 "category": "WriteDown"
             }
         ],
@@ -25,7 +30,7 @@
             {
                 "key": "ctrl+alt+v",
                 "mac": "cmd+v",
-                "command": "writedown.pasteImage",
+                "command": "writedown.paste",
                 "when": "editorTextFocus && !editorReadonly"
             }
         ]
@@ -42,9 +47,12 @@
         "vscode": "^1.1.25",
         "tslint": "^5.8.0",
         "@types/node": "^8.10.25",
-        "@types/mocha": "^2.2.42"
+        "@types/mocha": "^2.2.42",
+        "app-root-dir": ""
     },
     "dependencies": {
-        "child_process": ""
+        "@types/app-root-dir": "^0.1.0",
+        "app-root-dir": "^1.0.2",
+        "child_process": "^1.0.2"
     }
 }
