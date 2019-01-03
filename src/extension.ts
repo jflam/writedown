@@ -5,7 +5,8 @@ import Window = vscode.window;
 import * as ard from 'app-root-dir';
 
 // TODO: typescript this?
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
+const opn = require('opn');
 
 function generateUniqueFilename(directoryName: string, filename: string, extension: string): string {
     let counter = 0;
@@ -195,6 +196,33 @@ export function activate(context: vscode.ExtensionContext) {
                         }
                     });
             }
+        });
+    }));
+
+    disposables.push(vscode.commands.registerCommand('writedown.startHugoServer', () => {
+
+        // TODO: define themes? 
+        // TODO: add port to configuration
+        let hugoServer = spawn('hugo', [
+            'server',
+            `-s="${vscode.workspace.rootPath}"`,
+            '--buildDrafts',
+            '--watch',
+            '--port=1337'
+        ], { shell: true });
+
+        hugoServer.stdout.on('data', (data: string) => {
+            // Detected that the hugo server successfully started up and is serving content
+            // so open the default web browser to the site
+            if (data.indexOf('Building sites') > -1) {
+                console.log("hugo server started. opening http://localhost:1337");
+                opn('http://localhost:1337')
+            }
+        });
+
+        hugoServer.stderr.on('data', (data: string) => {
+            console.log(`Error starting hugo server: ${data}`);
+            vscode.window.showErrorMessage(`Error starting hugo server: ${data}`);
         });
     }));
 
