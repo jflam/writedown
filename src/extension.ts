@@ -25,6 +25,37 @@ export function add(x: number, y: number): number {
     return x + y;
 }
 
+function getReplacementText(selectionText: string): [string, string] {
+
+    // Define an array of regular expressions that we will iterate over
+    let re_twitter: RegExp = /https:\/\/twitter.com\/.*?\/(\d+)/; 
+    let re_youtube: RegExp = /https:\/\/www.youtube.com\/watch\?v\=(\w+)/;
+    let re_vimeo: RegExp = /https:\/\/vimeo.com\/(\d+)/;
+    let re_instagram: RegExp = /https:\/\/www.instagram.com\/.*?\/(.*?)\//;
+    
+    let regular_expressions: Array<[RegExp, string]> = [
+        [re_twitter, "tweet"], 
+        [re_youtube, "youtube"],
+        [re_vimeo, "vimeo"],
+        [re_instagram, "instagram"],
+    ];
+
+    for (let [re, shortcode] of regular_expressions) 
+    {
+        let match = re.exec(selectionText);
+        if (match === null)
+        {
+            continue;
+        }
+        else
+        {
+            return [match[1], shortcode];
+        }
+    }
+
+    return ["", ""];
+}
+
 // We use the activate() function to register the commands for the writedown extension
 export function activate(context: vscode.ExtensionContext) {
 
@@ -94,29 +125,40 @@ export function activate(context: vscode.ExtensionContext) {
                     if (accepted_filename !== undefined) {
 
                         // TODO: add the right build step to the extension to copy the platform specific binary resources/bin
+                        // Examine the filename extension and use that to determine the encoder
+                        let extension = path.extname(accepted_filename).toLowerCase();
+                        if (extension === ".jpg" || extension === ".png")
+                        {
+                            let bare_dirname = path.dirname(accepted_filename);
+                            let bare_filename = path.basename(accepted_filename, extension);
+                            extension = extension.substr(1);
+                            let path_to_clippy = path.join(ard.get(), "resources/bin/clippy");
+                            let path_to_bare_filename = path.join(bare_dirname, bare_filename);
+                            let cmd = `${path_to_clippy} --filename=${path_to_bare_filename} --max_width=${image_max_width} --encoder=${extension} --write_full=${image_write_full}`;
+                            exec(cmd, (err: string, stdout: string, stderr: string) => {
+                                if (err) {
+                                    vscode.window.showErrorMessage(`clippy failed with this error: ${stdout}`);
+                                    return;
+                                } else {
+                                    // Clippy successfully wrote the file out to disk, now generate the markdown
+                                    const start = editor.selection.start;
+                                    const end = editor.selection.end;
+                                    let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
 
-                        let path_to_clippy = path.join(ard.get(), "resources/bin/clippy");
-                        let cmd = `${path_to_clippy} --filename=${accepted_filename} --max_width=${image_max_width} --encoder=${image_encoder} --write_full=${image_write_full}`;
-                        exec(cmd, (err: string, stdout: string, stderr: string) => {
-                            if (err) {
-                                vscode.window.showErrorMessage(`clippy failed with this error: ${stdout}`);
-                                return;
-                            } else {
-                                // Clippy successfully wrote the file out to disk, now generate the markdown
-                                const start = editor.selection.start;
-                                const end = editor.selection.end;
-                                let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
-
-                                editor.edit(edit => {
-                                    let local_filename = path.basename(accepted_filename)
-                                    edit.replace(selection, `{{< figure src="/${media_directory}/${local_filename}.${image_encoder}" >}}`);
-                                },
-                                    {
-                                        undoStopAfter: false,
-                                        undoStopBefore: false
-                                    });
-                            }
-                        });
+                                    editor.edit(edit => {
+                                        edit.replace(selection, `{{< figure src="/${media_directory}/${bare_filename}.${extension}" >}}`);
+                                    },
+                                        {
+                                            undoStopAfter: false,
+                                            undoStopBefore: false
+                                        });
+                                }
+                            });
+                        }
+                        else
+                        {
+                            vscode.window.showErrorMessage("Only png or jpg encoders are supported");
+                        }
                     }
                 });
             }
@@ -137,17 +179,21 @@ export function activate(context: vscode.ExtensionContext) {
                         // we can reformat it into something else.
                         const end = editor.selection.end;
                         let selection = new vscode.Selection(start.line, start.character, end.line, end.character);
+                        let selection_text = editor.document.getText(selection);
+                        let [id, shortcode] = getReplacementText(selection_text);
 
-                        editor.edit(edit => 
-                            {
-                                edit.replace(selection, `hello, world!`);
-                            },
-                            {
-                                undoStopAfter: false,
-                                undoStopBefore: false
-                            });
+                        if (id !== "")
+                        {
+                            editor.edit(edit => {
+                                edit.replace(selection, `{{< ${shortcode} ${id} >}}`);
+                                },
+                                {
+                                    undoStopAfter: false,
+                                    undoStopBefore: false
+                                }
+                            );
+                        }
                     });
-
             }
         });
     }));
