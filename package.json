@@ -3,6 +3,7 @@
     "displayName": "writedown",
     "description": "Supercharge your markdown writing",
     "version": "0.0.1",
+    "publisher": "john-lam",
     "engines": {
         "vscode": "^1.30.0"
     },
